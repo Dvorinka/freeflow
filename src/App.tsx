@@ -1,32 +1,49 @@
 import { useState } from "react";
+import { Dictation } from "./views/Dictation";
 import { History } from "./views/History";
 import { Dictionary } from "./views/Dictionary";
 import { Snippets } from "./views/Snippets";
+import { Transforms } from "./views/Transforms";
 import { Meetings } from "./views/Meetings";
 import { SettingsView } from "./views/Settings";
+import { Insights } from "./views/Insights";
+import { Scratchpad } from "./views/Scratchpad";
+import { Style } from "./views/Style";
+import { Shortcuts } from "./views/Shortcuts";
 import { api } from "./lib/api";
 import { cn } from "./lib/utils";
 import {
   IconBook,
+  IconChart,
   IconGear,
   IconHistory,
+  IconKeyboard,
   IconMeet,
   IconMic,
+  IconNote,
+  IconSliders,
+  IconWand,
   IconZap,
 } from "./components/icons";
 
 const TABS = [
+  ["dictation", "Dictation", IconMic],
   ["history", "History", IconHistory],
+  ["meetings", "Notetaker", IconMeet],
+  ["scratchpad", "Scratchpad", IconNote],
+  ["insights", "Insights", IconChart],
   ["dictionary", "Dictionary", IconBook],
   ["snippets", "Snippets", IconZap],
-  ["meetings", "Meetings", IconMeet],
+  ["transforms", "Transforms", IconWand],
+  ["style", "Style", IconSliders],
+  ["shortcuts", "Shortcuts", IconKeyboard],
   ["settings", "Settings", IconGear],
 ] as const;
 
 type Tab = (typeof TABS)[number][0];
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("history");
+  const [tab, setTab] = useState<Tab>("dictation");
   const [dictating, setDictating] = useState(false);
   const [err, setErr] = useState("");
 
@@ -63,7 +80,7 @@ export function App() {
           <img src="/icon.png" alt="" className="h-6 w-6 rounded-md" />
           <span className="text-[15px] font-bold tracking-tight">FreeFlow</span>
         </div>
-        <nav className="flex flex-col gap-0.5">
+        <nav aria-label="Main navigation" className="flex flex-col gap-0.5 overflow-y-auto">
           {TABS.map(([id, label, Icon]) => (
             <button
               key={id}
@@ -75,12 +92,12 @@ export function App() {
                   : "text-muted hover:bg-wash/60 hover:text-ink",
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-5 w-5 shrink-0" />
               {label}
             </button>
           ))}
         </nav>
-        <div className="mt-auto px-2">
+        <div className="mt-auto px-2 pt-3">
           <button
             onClick={toggleDictation}
             className={cn(
@@ -105,11 +122,17 @@ export function App() {
               {err}
             </p>
           )}
+          {tab === "dictation" && <Dictation />}
           {tab === "history" && <History />}
           {tab === "dictionary" && <Dictionary />}
           {tab === "snippets" && <Snippets />}
+          {tab === "transforms" && <Transforms />}
           {tab === "meetings" && <Meetings />}
           {tab === "settings" && <SettingsView />}
+          {tab === "insights" && <Insights />}
+          {tab === "scratchpad" && <Scratchpad />}
+          {tab === "style" && <Style />}
+          {tab === "shortcuts" && <Shortcuts />}
         </div>
       </main>
     </div>

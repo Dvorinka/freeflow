@@ -61,3 +61,49 @@ export const IconCheck = ({ className }: P) => (
     <path d="M4 10.5l4 4 8-9" className={base} />
   </svg>
 );
+
+export const IconChart = ({ className }: P) => (
+  <svg viewBox="0 0 20 20" className={className} aria-hidden>
+    <g className={base}>
+      <path d="M3 3v14h14" />
+      <path d="M7 13v-4M11 13V7M15 13v-6" />
+    </g>
+  </svg>
+);
+
+export const IconNote = ({ className }: P) => (
+  <svg viewBox="0 0 20 20" className={className} aria-hidden>
+    <g className={base}>
+      <path d="M5 3h7l3 3v11H5z" />
+      <path d="M12 3v3h3M8 11h4M8 14h4" />
+    </g>
+  </svg>
+);
+
+export const IconSliders = ({ className }: P) => (
+  <svg viewBox="0 0 20 20" className={className} aria-hidden>
+    <g className={base}>
+      <path d="M4 7h7M15 7h1M4 13h3M11 13h5" />
+      <circle cx="13" cy="7" r="1.6" />
+      <circle cx="9" cy="13" r="1.6" />
+    </g>
+  </svg>
+);
+
+export const IconKeyboard = ({ className }: P) => (
+  <svg viewBox="0 0 20 20" className={className} aria-hidden>
+    <g className={base}>
+      <rect x="2.5" y="6" width="15" height="9" rx="2" />
+      <path d="M6 9.5h1M9.5 9.5h1M13 9.5h1M6 12.5h8" />
+    </g>
+  </svg>
+);
+
+export const IconWand = ({ className }: P) => (
+  <svg viewBox="0 0 20 20" className={className} aria-hidden>
+    <g className={base}>
+      <path d="M4 16 12 8M13.5 3.5l1 1M16.5 6.5l.8.8M14 2l.6 1.6M17.5 4.5L19 5" />
+      <path d="M12.5 5.5 14.5 7.5 9 13l-2-.5-.5-2 6-5z" />
+    </g>
+  </svg>
+);

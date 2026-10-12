@@ -43,7 +43,7 @@ async function main() {
   await shot("history");
 
   // Meetings.
-  await main.getByRole("button", { name: "Meetings" }).click();
+  await main.getByRole("button", { name: "Notetaker" }).click();
   await main.waitForTimeout(600);
   await shot("meetings");
 

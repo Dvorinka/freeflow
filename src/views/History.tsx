@@ -80,6 +80,13 @@ export function History() {
                 <IconMic className="mr-1 h-3.5 w-3.5" />
                 Type again
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(r.formattedText).catch(() => {})}
+              >
+                Copy
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => api.deleteHistory(r.id).then(load)}>
                 Delete
               </Button>
