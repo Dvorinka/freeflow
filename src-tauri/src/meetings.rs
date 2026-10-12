@@ -86,6 +86,7 @@ pub fn start(app: &AppHandle, title: String) -> Result<String> {
 
     // System-audio leg (Windows loopback). Failure is non-fatal: meeting
     // still records mic audio.
+    #[allow(unused_mut)] // `mut` only needed for the Windows loopback push
     let mut handles = vec![writer, mic_thread];
     #[cfg(windows)]
     {
