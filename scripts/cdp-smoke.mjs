@@ -81,7 +81,7 @@ async function main() {
   check("settings shows models", body.includes("small.en"));
   check("settings groups en/multilingual", /English-only/.test(body) && /Multilingual/.test(body));
 
-  await main.screenshot({ path: "scripts/cdp-settings.png" });
+  await main.screenshot({ path: "C:/Users/PC/AppData/Local/Temp/opencode/cdp-settings.png" });
 
   await browser.close();
   console.log(results.join("\n"));
