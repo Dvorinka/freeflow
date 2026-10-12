@@ -43,6 +43,8 @@ pub struct Settings {
     pub ollama_model: String,
     /// Preferred input device name fragment; empty = default.
     pub mic_device: String,
+    /// Learn capitalized words into the dictionary automatically.
+    pub auto_learn: bool,
     /// Launch at login.
     pub autostart: bool,
     /// Show the dictation overlay window.
@@ -65,6 +67,7 @@ impl Default for Settings {
             polish: "rules".into(),
             ollama_model: "qwen2.5:3b".into(),
             mic_device: String::new(),
+            auto_learn: true,
             autostart: false,
             overlay: true,
             auto_transform: String::new(),

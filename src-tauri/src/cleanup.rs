@@ -121,12 +121,14 @@ fn style_prompt(cat: AppCategory, raw: &str, custom: Option<&str>) -> String {
 /// `None` = builtin voice for the category (or unknown preset id).
 pub fn style_preset_prompt(preset: &str) -> Option<String> {
     let body = match preset {
-        "casual" => "Rewrite casually: relaxed tone, light punctuation, "
-            .to_string()
-            + "keep the meaning. Return ONLY the rewritten text.",
-        "very_casual" => "Rewrite very casually: all lowercase, minimal "
-            .to_string()
-            + "punctuation, keep the meaning. Return ONLY the rewritten text.",
+        "casual" => {
+            "Rewrite casually: relaxed tone, light punctuation, ".to_string()
+                + "keep the meaning. Return ONLY the rewritten text."
+        }
+        "very_casual" => {
+            "Rewrite very casually: all lowercase, minimal ".to_string()
+                + "punctuation, keep the meaning. Return ONLY the rewritten text."
+        }
         _ => return None,
     };
     Some(body)

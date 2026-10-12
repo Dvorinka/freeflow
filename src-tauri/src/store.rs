@@ -201,6 +201,11 @@ impl Db {
         Ok(())
     }
 
+    pub fn clear_history(&self) -> Result<()> {
+        self.conn.execute("DELETE FROM history", [])?;
+        Ok(())
+    }
+
     /// Update edited_text + feed dictionary frequencies from a corrected text.
     /// (Wired to the history UI in the frontend step.)
     #[allow(dead_code)]
@@ -452,6 +457,9 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].edited_text.as_deref(), Some("Hello world!"));
         assert!(db.meeting_get("nope").unwrap().is_none());
+        db.add_history(&hist("c")).unwrap();
+        db.clear_history().unwrap();
+        assert!(db.history(10).unwrap().is_empty());
     }
 
     #[test]

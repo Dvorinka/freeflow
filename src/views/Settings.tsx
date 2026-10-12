@@ -137,6 +137,7 @@ export function SettingsView() {
           {(
             [
               ["livePartials", "Type live partials while speaking"],
+              ["autoLearn", "Auto-add corrected words to dictionary"],
               ["autostart", "Launch at login"],
               ["overlay", "Show dictation overlay"],
             ] as const
@@ -151,6 +152,24 @@ export function SettingsView() {
               {label}
             </label>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Data">
+        <p className="text-sm text-muted">
+          History lives in a local SQLite file. Deleting transcripts cannot be undone.
+        </p>
+        <div className="mt-2">
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (window.confirm("Delete your entire transcription history? This cannot be undone.")) {
+                api.clearHistory().catch((e) => setSaved(String(e)));
+              }
+            }}
+          >
+            Delete all transcripts
+          </Button>
         </div>
       </Section>
 

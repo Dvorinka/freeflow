@@ -36,7 +36,8 @@ pub struct ForegroundApp {
     pub category: AppCategory,
 }
 
-pub fn category_for(exe: &str) -> AppCategory {    let e = exe.to_lowercase();
+pub fn category_for(exe: &str) -> AppCategory {
+    let e = exe.to_lowercase();
     let e = e.trim_end_matches(".exe");
     match e {
         "code" | "devenv" | "rider64" | "idea64" | "pycharm64" | "goland64" | "webstorm64"

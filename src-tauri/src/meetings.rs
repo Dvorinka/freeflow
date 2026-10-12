@@ -213,3 +213,25 @@ pub async fn summarize(app: &AppHandle, id: &str) -> Result<String> {
     }
     Ok(notes)
 }
+
+/// Answer a question about a meeting transcript with the local model.
+/// Stateless (answers are not stored) — the drawer keeps its own history.
+pub async fn ask(app: &AppHandle, id: &str, question: &str) -> Result<String> {
+    let state = app.state::<AppState>();
+    let m = {
+        let db = state.db.lock();
+        let m = db.as_ref().context("db not ready")?.meeting_get(id)?;
+        m.context("meeting not found")?
+    };
+    let transcript = m.transcript.context("meeting has no transcript yet")?;
+    let settings = state.settings.lock().clone();
+    cleanup::ollama_polish(
+        &state.http,
+        &settings.ollama_model,
+        crate::foreapp::AppCategory::Document,
+        &format!("Transcript:\n{transcript}\n\nQuestion: {question}"),
+        Some("Answer the question using only the transcript above. Be concise. If the answer is not in the transcript, say so."),
+    )
+    .await
+    .context("local LLM unavailable — run Ollama to ask about meetings")
+}

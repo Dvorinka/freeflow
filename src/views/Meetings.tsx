@@ -96,22 +96,132 @@ export function Meetings() {
         )}
       </div>
       {detail && (
-        <div className="mt-3 rounded-card border border-ink/20 bg-surface p-4 shadow-card">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">{detail.title}</h3>
-            <Button variant="ghost" size="sm" onClick={() => setDetail(null)}>
-              Close
-            </Button>
-          </div>
-          {detail.transcript && (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-              {detail.transcript}
+        <MeetingDetail
+          meeting={detail}
+          onClose={() => {
+            setDetail(null);
+            load();
+          }}
+          onError={setBusy}
+        />
+      )}
+    </div>
+  );
+}
+
+function MeetingDetail({
+  meeting,
+  onClose,
+  onError,
+}: {
+  meeting: MeetingRow;
+  onClose: () => void;
+  onError: (e: string) => void;
+}) {
+  const [tab, setTab] = useState<"transcript" | "notes" | "chat">("transcript");
+  const [detail, setDetail] = useState(meeting);
+  const [question, setQuestion] = useState("");
+  const [qa, setQa] = useState<[string, string][]>([]);
+  const [asking, setAsking] = useState(false);
+
+  const refresh = () => api.meeting(detail.id).then((r) => r && setDetail(r));
+
+  const makeNotes = () =>
+    api
+      .meetingNotes(detail.id)
+      .then(() => refresh())
+      .catch((e) => onError(String(e)));
+
+  const ask = () => {
+    const q = question.trim();
+    if (!q || asking) return;
+    setAsking(true);
+    api
+      .meetingAsk(detail.id, q)
+      .then((a) => {
+        setQa((prev) => [...prev, [q, a]]);
+        setQuestion("");
+      })
+      .catch((e) => setQa((prev) => [...prev, [q, `Couldn't answer: ${e}`]]))
+      .finally(() => setAsking(false));
+  };
+
+  return (
+    <div className="mt-3 rounded-card border border-ink/20 bg-surface p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <h3 className="font-serif text-xl font-semibold">{detail.title}</h3>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      <div className="mt-2 flex gap-4 border-b border-border text-sm">
+        {(["transcript", "notes", "chat"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`pb-2 font-medium capitalize ${
+              tab === t ? "border-b-2 border-ink text-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === "transcript" && (
+        <div className="mt-2">
+          {detail.transcript ? (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.transcript}</p>
+          ) : (
+            <p className="text-sm text-muted">
+              {detail.status === "recording" ? "Still recording…" : "Transcribing — refresh in a bit."}
             </p>
           )}
-          {detail.notes && (
-            <p className="mt-2 whitespace-pre-wrap border-t border-border pt-2 text-sm leading-relaxed">
-              {detail.notes}
-            </p>
+        </div>
+      )}
+      {tab === "notes" && (
+        <div className="mt-2">
+          {detail.notes ? (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.notes}</p>
+          ) : (
+            <p className="text-sm text-muted">No notes yet.</p>
+          )}
+          {detail.transcript && (
+            <Button variant="secondary" size="sm" onClick={makeNotes}>
+              Generate notes
+            </Button>
+          )}
+        </div>
+      )}
+      {tab === "chat" && (
+        <div className="mt-2">
+          {!detail.transcript ? (
+            <p className="text-sm text-muted">Ask once the transcript lands.</p>
+          ) : (
+            <>
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {qa.length === 0 && (
+                  <p className="text-sm text-muted">Ask anything about this meeting.</p>
+                )}
+                {qa.map(([q, a], i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="rounded-lg bg-wash px-3 py-2 text-sm font-medium">{q}</p>
+                    <p className="whitespace-pre-wrap px-3 text-sm leading-relaxed">{a}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-faint focus:border-muted"
+                  placeholder="Ask anything"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && ask()}
+                />
+                <Button onClick={ask} disabled={asking}>
+                  {asking ? "…" : "Ask"}
+                </Button>
+              </div>
+            </>
           )}
         </div>
       )}

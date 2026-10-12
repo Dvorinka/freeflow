@@ -219,8 +219,10 @@ async fn run_pipeline(app: AppHandle, mut cap: Capture) -> Result<(), String> {
     };
     if let Some(db) = state.db.lock().as_ref() {
         let _ = db.add_history(&entry);
-        for phrase in extract_capitalized(&cleaned) {
-            let _ = db.dict_bump_used(&phrase);
+        if state.settings.lock().auto_learn {
+            for phrase in extract_capitalized(&cleaned) {
+                let _ = db.dict_bump_used(&phrase);
+            }
         }
     }
 
@@ -282,6 +284,11 @@ pub fn delete_history_entry(state: State<'_, AppState>, id: String) -> Result<()
     guard_db(&state)?
         .delete_history(&id)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_history(state: State<'_, AppState>) -> Result<(), String> {
+    guard_db(&state)?.clear_history().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -450,6 +457,13 @@ pub fn get_meeting(
 #[tauri::command]
 pub async fn meeting_notes(app: AppHandle, id: String) -> Result<String, String> {
     meetings::summarize(&app, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn meeting_ask(app: AppHandle, id: String, question: String) -> Result<String, String> {
+    meetings::ask(&app, &id, &question)
         .await
         .map_err(|e| e.to_string())
 }
