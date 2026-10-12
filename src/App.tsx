@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dictation } from "./views/Dictation";
+import { Welcome, WELCOME_KEY } from "./views/Welcome";
 import { History } from "./views/History";
 import { Dictionary } from "./views/Dictionary";
 import { Snippets } from "./views/Snippets";
@@ -40,10 +41,12 @@ const TABS = [
   ["settings", "Settings", IconGear],
 ] as const;
 
-type Tab = (typeof TABS)[number][0];
+type Tab = (typeof TABS)[number][0] | "welcome";
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("dictation");
+  const [tab, setTab] = useState<Tab>(() =>
+    localStorage.getItem(WELCOME_KEY) ? "dictation" : "welcome",
+  );
   const [dictating, setDictating] = useState(false);
   const [err, setErr] = useState("");
 
@@ -81,6 +84,12 @@ export function App() {
           <span className="text-[15px] font-bold tracking-tight">FreeFlow</span>
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-0.5 overflow-y-auto">
+          {tab === "welcome" && (
+            <span className="flex items-center gap-2.5 rounded-lg bg-wash px-2.5 py-2 text-sm font-medium text-ink">
+              <IconZap className="h-5 w-5 shrink-0" />
+              Welcome
+            </span>
+          )}
           {TABS.map(([id, label, Icon]) => (
             <button
               key={id}
@@ -122,6 +131,7 @@ export function App() {
               {err}
             </p>
           )}
+          {tab === "welcome" && <Welcome onDone={() => setTab("dictation")} />}
           {tab === "dictation" && <Dictation />}
           {tab === "history" && <History />}
           {tab === "dictionary" && <Dictionary />}
