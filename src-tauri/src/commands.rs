@@ -132,13 +132,19 @@ async fn run_pipeline(app: AppHandle, mut cap: Capture) -> Result<(), String> {
         return Err("recording too short".into());
     }
 
-    let (model, language, polish, ollama_model) = {
+    let (model, language, polish, ollama_model, auto_transform, style_preset) = {
         let s = state.settings.lock();
+        let preset = s
+            .styles
+            .get(cap.app.category.key())
+            .and_then(|id| cleanup::style_preset_prompt(id));
         (
             s.model.clone(),
             s.language.clone(),
             s.polish.clone(),
             s.ollama_model.clone(),
+            s.auto_transform.clone(),
+            preset,
         )
     };
 
@@ -160,13 +166,35 @@ async fn run_pipeline(app: AppHandle, mut cap: Capture) -> Result<(), String> {
         return Err("nothing heard".into());
     }
 
-    // Post-process: named transform via Ollama, style polish, or rules.
+    // Post-process: named auto-transform, per-category style preset
+    // (both via the local model), or deterministic rules.
     let cleaned = match polish.as_str() {
         "ollama" => {
             state.set_phase(&app, DictationPhase::Polishing);
-            cleanup::ollama_polish(&state.http, &ollama_model, cap.app.category, &raw, None)
-                .await
-                .unwrap_or_else(|| cleanup::rules_cleanup(&raw))
+            // Explicit auto-transform wins; otherwise the category's style
+            // preset; otherwise the builtin voice (None).
+            let custom: Option<String> = if !auto_transform.is_empty() {
+                state
+                    .db
+                    .lock()
+                    .as_ref()
+                    .and_then(|d| d.transforms().ok())
+                    .into_iter()
+                    .flatten()
+                    .find(|t| t.name == auto_transform)
+                    .map(|t| t.prompt)
+            } else {
+                style_preset
+            };
+            cleanup::ollama_polish(
+                &state.http,
+                &ollama_model,
+                cap.app.category,
+                &raw,
+                custom.as_deref(),
+            )
+            .await
+            .unwrap_or_else(|| cleanup::rules_cleanup(&raw))
         }
         "none" => raw.clone(),
         _ => cleanup::rules_cleanup(&raw),

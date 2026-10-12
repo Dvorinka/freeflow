@@ -22,7 +22,7 @@ export function Shortcuts() {
 
   return (
     <div>
-      <h2 className="text-lg font-bold tracking-tight">Shortcuts</h2>
+      <h2 className="font-serif text-[28px] font-semibold tracking-tight">Shortcuts</h2>
       <p className="mt-1 text-sm text-muted">Customize how you talk to Flow.</p>
       <div className="mt-3 rounded-card border border-border bg-surface p-4 shadow-card">
         <label className="block text-sm font-medium">

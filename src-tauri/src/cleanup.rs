@@ -117,6 +117,21 @@ fn style_prompt(cat: AppCategory, raw: &str, custom: Option<&str>) -> String {
     )
 }
 
+/// Full local-model instruction for a Style preset choice.
+/// `None` = builtin voice for the category (or unknown preset id).
+pub fn style_preset_prompt(preset: &str) -> Option<String> {
+    let body = match preset {
+        "casual" => "Rewrite casually: relaxed tone, light punctuation, "
+            .to_string()
+            + "keep the meaning. Return ONLY the rewritten text.",
+        "very_casual" => "Rewrite very casually: all lowercase, minimal "
+            .to_string()
+            + "punctuation, keep the meaning. Return ONLY the rewritten text.",
+        _ => return None,
+    };
+    Some(body)
+}
+
 pub async fn ollama_running(http: &reqwest::Client) -> bool {
     http.get("http://127.0.0.1:11434/api/tags")
         .timeout(std::time::Duration::from_secs(2))
@@ -167,6 +182,16 @@ mod tests {
     fn fillers_and_casing() {
         assert_eq!(rules_cleanup("um hello world"), "Hello world.");
         assert_eq!(rules_cleanup("uh , i think it works"), "I think it works.");
+    }
+
+    #[test]
+    fn style_presets() {
+        assert!(style_preset_prompt("formal").is_none());
+        assert!(style_preset_prompt("nope").is_none());
+        let casual = style_preset_prompt("casual").unwrap();
+        assert!(casual.contains("casually"));
+        let vc = style_preset_prompt("very_casual").unwrap();
+        assert!(vc.contains("lowercase"));
     }
 
     /// No Ollama on this box: discovery is false and polish falls back.

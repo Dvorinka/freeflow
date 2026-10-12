@@ -40,7 +40,7 @@ export function Meetings() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold tracking-tight">Meeting recorder</h2>
+          <h2 className="font-serif text-[28px] font-semibold tracking-tight">Meeting recorder</h2>
           <p className="mt-1 text-sm text-muted">
             Mic plus system audio, transcribed on-device when you stop.
           </p>

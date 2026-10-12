@@ -1,23 +1,74 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { IconMic } from "../components/icons";
+import { Banner, H } from "../components/Banner";
 
-// Home: big mic, hotkey hint, today's count. Mirrors the Dictation landing.
+function startOfDay(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+// Consecutive-day streak ending today (or yesterday, still alive).
+function streak(daySet: Set<number>): number {
+  const today = startOfDay(Date.now());
+  const day = 86400000;
+  let cursor = daySet.has(today) ? today : today - day;
+  let n = 0;
+  while (daySet.has(cursor)) {
+    n++;
+    cursor -= day;
+  }
+  return n;
+}
+
+function weekStreak(daySet: Set<number>): number {
+  const weeks = new Set(
+    [...daySet].map((t) => {
+      const d = new Date(t);
+      const onejan = new Date(d.getFullYear(), 0, 1).getTime();
+      return `${d.getFullYear()}-${Math.floor((t - onejan) / 604800000)}`;
+    }),
+  );
+  const now = new Date();
+  const onejan = new Date(now.getFullYear(), 0, 1).getTime();
+  const cur = `${now.getFullYear()}-${Math.floor((now.getTime() - onejan) / 604800000)}`;
+  const prev = `${now.getFullYear()}-${Math.floor((now.getTime() - onejan) / 604800000) - 1}`;
+  const nums = [...weeks]
+    .map((w) => parseInt(w.split("-")[1], 10))
+    .sort((a, b) => b - a);
+  const start = weeks.has(cur)
+    ? parseInt(cur.split("-")[1], 10)
+    : parseInt(prev.split("-")[1], 10);
+  let n = 0;
+  for (const k of nums) {
+    if (k === start - n) n++;
+    else if (k < start - n) break;
+  }
+  return weeks.has(cur) || weeks.has(prev) ? n : 0;
+}
+
+// Home: banner, big mic, streak stats. Mirrors the Dictation landing.
 export function Dictation() {
   const [dictating, setDictating] = useState(false);
-  const [today, setToday] = useState(0);
-  const [words, setWords] = useState(0);
+  const [stats, setStats] = useState({ day: 0, week: 0, words: 0, wpm: 0 });
+  const [hotkey, setHotkey] = useState("the hotkey");
   const [err, setErr] = useState("");
 
   useEffect(() => {
+    api.settings().then((s) => setHotkey(s.hotkey)).catch(() => {});
     api
-      .history(1000)
+      .history(5000)
       .then((rows) => {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const t = rows.filter((r) => r.timestamp >= start.getTime());
-        setToday(t.length);
-        setWords(t.reduce((a, r) => a + r.numWords, 0));
+        const days = new Set(rows.map((r) => startOfDay(r.timestamp)));
+        const words = rows.reduce((a, r) => a + r.numWords, 0);
+        const minutes = rows.reduce((a, r) => a + r.durationMs, 0) / 60000;
+        setStats({
+          day: streak(days),
+          week: weekStreak(days),
+          words,
+          wpm: minutes > 0 ? Math.round(words / minutes) : 0,
+        });
       })
       .catch(() => {});
   }, []);
@@ -45,13 +96,22 @@ export function Dictation() {
     }
   };
 
+  const statsRow: [string, string][] = [
+    [`${stats.day}`, "day streak"],
+    [`${stats.week}`, "week streak"],
+    [`${stats.words}`, "total words"],
+    [`${stats.wpm}`, "wpm"],
+  ];
+
   return (
     <div>
-      <h2 className="text-lg font-bold tracking-tight">Dictation</h2>
-      <p className="mt-1 text-sm text-muted">
-        Hold your hotkey anywhere, speak, release — words land where you left off.
-      </p>
-      <div className="mt-4 flex flex-col items-center rounded-card border border-border bg-surface py-8 shadow-card">
+      <Banner dark
+        title={<>Hold down <H>{hotkey}</H> to dictate</>}
+        body="FreeFlow works in all your apps. Try it in email, messages, docs or anywhere else."
+        action="See how it works"
+        onAction={toggle}
+      />
+      <div className="flex flex-col items-center rounded-card border border-border bg-surface py-8 shadow-card">
         <button
           onClick={toggle}
           aria-label={dictating ? "Stop dictation" : "Start dictation"}
@@ -65,15 +125,13 @@ export function Dictation() {
           {dictating ? "Listening — press again to finish" : "Press to dictate"}
         </p>
         {err && <p className="mt-1 text-sm text-red-600">{err}</p>}
-        <div className="mt-4 flex gap-6 text-center">
-          <div>
-            <p className="text-xl font-bold">{today}</p>
-            <p className="text-xs text-faint">dictations today</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold">{words}</p>
-            <p className="text-xs text-faint">words today</p>
-          </div>
+        <div className="mt-4 grid w-full grid-cols-4 gap-2 px-6 text-center">
+          {statsRow.map(([v, l]) => (
+            <div key={l}>
+              <p className="text-xl font-bold">{v}</p>
+              <p className="text-xs text-faint">{l}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

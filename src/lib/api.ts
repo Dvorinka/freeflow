@@ -65,6 +65,8 @@ export interface Settings {
   micDevice: string;
   autostart: boolean;
   overlay: boolean;
+  autoTransform: string;
+  styles: Record<string, string>;
 }
 
 export interface ModelInfo {

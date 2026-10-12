@@ -3,6 +3,7 @@
 use crate::{meetings, store, stt, tray};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Child;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -46,6 +47,12 @@ pub struct Settings {
     pub autostart: bool,
     /// Show the dictation overlay window.
     pub overlay: bool,
+    /// Named transform auto-applied after dictation (Ollama mode only).
+    /// Empty = off (rule cleanup / builtin voice).
+    pub auto_transform: String,
+    /// Per-category style preset ids ("formal" | "casual" | "very_casual"),
+    /// keyed by app-category key. Absent = builtin voice.
+    pub styles: HashMap<String, String>,
 }
 
 impl Default for Settings {
@@ -60,6 +67,8 @@ impl Default for Settings {
             mic_device: String::new(),
             autostart: false,
             overlay: true,
+            auto_transform: String::new(),
+            styles: HashMap::new(),
         }
     }
 }

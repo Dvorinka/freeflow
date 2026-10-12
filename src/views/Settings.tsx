@@ -50,7 +50,7 @@ export function SettingsView() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-bold tracking-tight">Settings</h2>
+      <h2 className="font-serif text-[28px] font-semibold tracking-tight">Settings</h2>
 
       <Section title="Speech model">
         <p className="text-[13px] text-muted">

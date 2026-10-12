@@ -116,7 +116,7 @@ export function App() {
 
       {/* Content */}
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-2xl px-6 py-6">
+        <div className="mx-auto max-w-3xl px-6 py-6">
           {err && (
             <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {err}

@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Figtree", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["EB Garamond", "Georgia", "serif"],
       },
       colors: {
         canvas: "#fcfcfb",

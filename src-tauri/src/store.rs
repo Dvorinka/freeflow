@@ -533,11 +533,16 @@ mod tests {
     fn settings_round_trip() {
         let db = memdb();
         assert!(db.load_settings().is_none());
-        let s = Settings {
+        let mut s = Settings {
             model: "large-v3-turbo".into(),
+            auto_transform: "Polish".into(),
             ..Settings::default()
         };
+        s.styles.insert("chat".into(), "casual".into());
         db.save_settings(&s).unwrap();
-        assert_eq!(db.load_settings().unwrap().model, "large-v3-turbo");
+        let back = db.load_settings().unwrap();
+        assert_eq!(back.model, "large-v3-turbo");
+        assert_eq!(back.auto_transform, "Polish");
+        assert_eq!(back.styles.get("chat").map(String::as_str), Some("casual"));
     }
 }

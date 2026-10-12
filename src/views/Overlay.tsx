@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { DictationPhase } from "../lib/api";
+import { api } from "../lib/api";
 
 // Dark pill near the cursor, mirrored on the dictation lifecycle:
 // animated bars while listening, still pill with status while working.
 const PHASE_TEXT: Record<Exclude<DictationPhase, "idle">, string> = {
   listening: "Listening…",
-  transcribing: "Transcribing…",
-  polishing: "Polishing…",
+  transcribing: "Working…",
+  polishing: "Working…",
   injecting: "Typing…",
 };
 
@@ -27,12 +28,14 @@ function Bars({ live }: { live: boolean }) {
 
 export function Overlay() {
   const [phase, setPhase] = useState<DictationPhase>("idle");
+  const [hotkey, setHotkey] = useState("");
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     listen<DictationPhase>("dictation:phase", (e) => setPhase(e.payload)).then(
       (fn) => (unlisten = fn),
     );
+    api.settings().then((s) => setHotkey(s.hotkey)).catch(() => {});
     return () => unlisten?.();
   }, []);
 
@@ -46,7 +49,13 @@ export function Overlay() {
         </span>
         <Bars live={phase === "listening"} />
         <span className="text-sm font-medium">{PHASE_TEXT[phase]}</span>
-        <span className="text-xs text-white/50">release to finish</span>
+        <span className="text-xs text-white/50">
+          {phase === "listening"
+            ? hotkey
+              ? `hold ${hotkey} while speaking, release to see text`
+              : "release to finish"
+            : "hang tight"}
+        </span>
       </div>
     </div>
   );

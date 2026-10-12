@@ -29,7 +29,7 @@ export function Insights() {
 
   return (
     <div>
-      <h2 className="text-lg font-bold tracking-tight">Insights</h2>
+      <h2 className="font-serif text-[28px] font-semibold tracking-tight">Insights</h2>
       <p className="mt-1 text-sm text-muted">Your dictation, counted locally.</p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {[
