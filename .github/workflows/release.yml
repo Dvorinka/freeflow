@@ -55,7 +55,7 @@ jobs:
       - run: pip install -r sidecar/requirements.txt pyinstaller
       # Linux freeze: same layout the bundle expects (extensionless binary).
       - run: >
-          .venv/bin/pyinstaller --noconfirm --clean --onefile --console
+          python -m PyInstaller --noconfirm --clean --onefile --console
           --name freeflow-whisper
           --collect-all faster_whisper --collect-all ctranslate2
           --distpath dist/tmp freeflow_whisper.py &&
