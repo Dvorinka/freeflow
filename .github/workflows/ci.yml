@@ -22,12 +22,31 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: sidecar/requirements.txt
+      - run: pip install -r ../sidecar/requirements.txt
+      # tauri-build validates bundle resources, so freeze the sidecar first.
+      # Same flags as sidecar/build.ps1; also drops the dev copy the live
+      # stt test spawns (so CI transcribes for real, incl. model download).
+      - run: |
+          pyinstaller --noconfirm --clean --onefile --console --name freeflow-whisper --collect-all faster_whisper --collect-all ctranslate2 --distpath dist/tmp freeflow_whisper.py
+          mkdir dist/whisper-sidecar
+          move dist/tmp/freeflow-whisper.exe dist/whisper-sidecar/freeflow-whisper.exe
+          copy dist/whisper-sidecar/freeflow-whisper.exe freeflow-whisper.exe
+        working-directory: sidecar
+      - uses: actions/cache@v4
+        with:
+          path: ~/AppData/Roaming/dev.tdvorak.freeflow/models
+          key: whisper-models-small-en-v1
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo build
       - run: cargo test
-        # NB: live sidecar test skips without the frozen exe;
-        # loopback hardware test skips without FREEFLOW_TEST_LOOPBACK=1.
+        # Live sidecar test runs (frozen above); loopback hardware test
+        # still skips without FREEFLOW_TEST_LOOPBACK=1.
 
   frontend:
     runs-on: windows-latest
