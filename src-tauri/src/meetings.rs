@@ -99,7 +99,11 @@ pub fn start(app: &AppHandle, title: String) -> Result<String> {
         handles.push(loop_thread);
     }
 
-    let rec = MeetingRec { stop, handles, id: id.clone() };
+    let rec = MeetingRec {
+        stop,
+        handles,
+        id: id.clone(),
+    };
     *state.meeting.lock() = Some(rec);
 
     if let Some(db) = state.db.lock().as_ref() {
@@ -129,7 +133,10 @@ pub async fn stop(app: &AppHandle) -> Result<()> {
     }
 
     let state = app.state::<AppState>();
-    let wav_path = state.app_data.join("meetings").join(format!("{}.wav", rec.id));
+    let wav_path = state
+        .app_data
+        .join("meetings")
+        .join(format!("{}.wav", rec.id));
     let audio_path = wav_path.to_string_lossy().to_string();
     if let Some(db) = state.db.lock().as_ref() {
         let _ = db.meeting_finish(&rec.id, &audio_path);
@@ -155,7 +162,7 @@ async fn transcribe_meeting(app: &AppHandle, id: &str) -> Result<()> {
     let slice = (audio::TARGET_RATE as usize) * 30;
     let mut all = String::new();
     for chunk in samples.chunks(slice) {
-        let t = stt::transcribe(app, chunk, "auto", "").await?;
+        let t = stt::transcribe(&state, chunk, "auto", "").await?;
         if !all.is_empty() {
             all.push(' ');
         }

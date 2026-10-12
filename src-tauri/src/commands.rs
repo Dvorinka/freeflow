@@ -45,7 +45,8 @@ pub fn register_hotkey(app: &AppHandle) -> anyhow::Result<()> {
                     tauri::async_runtime::spawn(async move {
                         if let Err(e) = start_dictation(app.clone()).await {
                             tracing::error!("dictation start: {e:#}");
-                            app.state::<AppState>().set_phase(&app, DictationPhase::Idle);
+                            app.state::<AppState>()
+                                .set_phase(&app, DictationPhase::Idle);
                         }
                     });
                 }
@@ -56,7 +57,8 @@ pub fn register_hotkey(app: &AppHandle) -> anyhow::Result<()> {
                     tauri::async_runtime::spawn(async move {
                         if let Err(e) = stop_dictation(app.clone()).await {
                             tracing::error!("dictation stop: {e:#}");
-                            app.state::<AppState>().set_phase(&app, DictationPhase::Idle);
+                            app.state::<AppState>()
+                                .set_phase(&app, DictationPhase::Idle);
                         }
                     });
                 }
@@ -132,14 +134,24 @@ async fn run_pipeline(app: AppHandle, mut cap: Capture) -> Result<(), String> {
 
     let (model, language, polish, ollama_model) = {
         let s = state.settings.lock();
-        (s.model.clone(), s.language.clone(), s.polish.clone(), s.ollama_model.clone())
+        (
+            s.model.clone(),
+            s.language.clone(),
+            s.polish.clone(),
+            s.ollama_model.clone(),
+        )
     };
 
     // Bias the decoder with the user's dictionary (mirrors the original's
     // vocabulary-aware prompting).
-    let bias = state.db.lock().as_ref().map(|d| d.bias_prompt()).unwrap_or_default();
+    let bias = state
+        .db
+        .lock()
+        .as_ref()
+        .map(|d| d.bias_prompt())
+        .unwrap_or_default();
 
-    let t = stt::transcribe(&app, &pcm, &language, &bias)
+    let t = stt::transcribe(&state, &pcm, &language, &bias)
         .await
         .map_err(|e| format!("transcription: {e}"))?;
     let raw = t.text.trim().to_string();
@@ -219,19 +231,29 @@ fn extract_capitalized(text: &str) -> Vec<String> {
 
 #[tauri::command]
 pub fn dictation_state(state: State<'_, AppState>) -> DictationStatus {
-    DictationStatus { phase: state.phase(), seconds: 0.0 }
+    DictationStatus {
+        phase: state.phase(),
+        seconds: 0.0,
+    }
 }
 
 // ---------- history ----------
 
 #[tauri::command]
-pub fn get_history(state: State<'_, AppState>, limit: Option<i64>) -> Result<Vec<store::HistoryEntry>, String> {
-    guard_db(&state)?.history(limit.unwrap_or(200)).map_err(|e| e.to_string())
+pub fn get_history(
+    state: State<'_, AppState>,
+    limit: Option<i64>,
+) -> Result<Vec<store::HistoryEntry>, String> {
+    guard_db(&state)?
+        .history(limit.unwrap_or(200))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_history_entry(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    guard_db(&state)?.delete_history(&id).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .delete_history(&id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -248,12 +270,16 @@ pub fn dictionary_list(state: State<'_, AppState>) -> Result<Vec<store::DictEntr
 
 #[tauri::command]
 pub fn dictionary_add(state: State<'_, AppState>, phrase: String) -> Result<(), String> {
-    guard_db(&state)?.dict_add(&phrase, true).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .dict_add(&phrase, true)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn dictionary_remove(state: State<'_, AppState>, phrase: String) -> Result<(), String> {
-    guard_db(&state)?.dict_remove(&phrase).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .dict_remove(&phrase)
+        .map_err(|e| e.to_string())
 }
 
 // ---------- snippets ----------
@@ -265,12 +291,16 @@ pub fn snippets_list(state: State<'_, AppState>) -> Result<Vec<store::Snippet>, 
 
 #[tauri::command]
 pub fn snippet_upsert(state: State<'_, AppState>, snippet: store::Snippet) -> Result<(), String> {
-    guard_db(&state)?.snippet_upsert(&snippet).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .snippet_upsert(&snippet)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn snippet_remove(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    guard_db(&state)?.snippet_remove(&id).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .snippet_remove(&id)
+        .map_err(|e| e.to_string())
 }
 
 // ---------- transforms ----------
@@ -281,13 +311,20 @@ pub fn transforms_list(state: State<'_, AppState>) -> Result<Vec<store::Transfor
 }
 
 #[tauri::command]
-pub fn transform_upsert(state: State<'_, AppState>, transform: store::Transform) -> Result<(), String> {
-    guard_db(&state)?.transform_upsert(&transform).map_err(|e| e.to_string())
+pub fn transform_upsert(
+    state: State<'_, AppState>,
+    transform: store::Transform,
+) -> Result<(), String> {
+    guard_db(&state)?
+        .transform_upsert(&transform)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn transform_remove(state: State<'_, AppState>, name: String) -> Result<(), String> {
-    guard_db(&state)?.transform_remove(&name).map_err(|e| e.to_string())
+    guard_db(&state)?
+        .transform_remove(&name)
+        .map_err(|e| e.to_string())
 }
 
 // ---------- settings / models / devices ----------
@@ -320,20 +357,24 @@ pub fn update_settings(app: AppHandle, settings: Settings) -> Result<(), String>
 
 #[tauri::command]
 pub async fn list_stt_models(app: AppHandle) -> Result<Vec<stt::ModelInfo>, String> {
-    stt::list_models(&app).await.map_err(|e| e.to_string())
+    let state = app.state::<AppState>();
+    stt::list_models(&state).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn select_stt_model(app: AppHandle, id: String) -> Result<(), String> {
-    stt::select_model(&app, &id).await.map_err(|e| e.to_string())?;
     let state = app.state::<AppState>();
+    stt::select_model(&state, &id)
+        .await
+        .map_err(|e| e.to_string())?;
     state.settings.lock().model = id;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn sidecar_status(app: AppHandle) -> Result<stt::SidecarStatus, String> {
-    Ok(stt::status(&app).await)
+    let state = app.state::<AppState>();
+    Ok(stt::status(&state).await)
 }
 
 #[tauri::command]
@@ -359,18 +400,30 @@ pub async fn stop_meeting(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn list_meetings(state: State<'_, AppState>, limit: Option<i64>) -> Result<Vec<store::MeetingRow>, String> {
-    guard_db(&state)?.meetings(limit.unwrap_or(100)).map_err(|e| e.to_string())
+pub fn list_meetings(
+    state: State<'_, AppState>,
+    limit: Option<i64>,
+) -> Result<Vec<store::MeetingRow>, String> {
+    guard_db(&state)?
+        .meetings(limit.unwrap_or(100))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_meeting(state: State<'_, AppState>, id: String) -> Result<Option<store::MeetingRow>, String> {
-    guard_db(&state)?.meeting_get(&id).map_err(|e| e.to_string())
+pub fn get_meeting(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Option<store::MeetingRow>, String> {
+    guard_db(&state)?
+        .meeting_get(&id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn meeting_notes(app: AppHandle, id: String) -> Result<String, String> {
-    meetings::summarize(&app, &id).await.map_err(|e| e.to_string())
+    meetings::summarize(&app, &id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ---------- helpers ----------

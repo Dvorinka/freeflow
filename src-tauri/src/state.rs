@@ -108,7 +108,10 @@ impl AppState {
         self.phase.store(p.as_u8(), Ordering::SeqCst);
         use tauri::Emitter;
         let _ = app.emit("dictation:phase", p);
-        tray::set_overlay_visible(app, p != DictationPhase::Idle && self.settings.lock().overlay);
+        tray::set_overlay_visible(
+            app,
+            p != DictationPhase::Idle && self.settings.lock().overlay,
+        );
     }
 
     /// Open the sqlite db and load settings; spawn the whisper sidecar.

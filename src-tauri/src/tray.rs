@@ -24,9 +24,11 @@ pub fn build(app: &AppHandle) -> Result<()> {
     TrayIconBuilder::new()
         .menu(&menu)
         .tooltip("FreeFlow — local voice typing")
-        .icon(app.default_window_icon().cloned().unwrap_or_else(|| {
-            tauri::image::Image::new(&[], 0, 0)
-        }))
+        .icon(
+            app.default_window_icon()
+                .cloned()
+                .unwrap_or_else(|| tauri::image::Image::new(&[], 0, 0)),
+        )
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => {
                 if let Some(w) = app.get_webview_window("main") {

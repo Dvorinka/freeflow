@@ -27,7 +27,13 @@ impl MicCapture {
                 tracing::error!("mic capture: {e:#}");
             }
         });
-        Ok((rx, Self { stop, handle: Some(handle) }))
+        Ok((
+            rx,
+            Self {
+                stop,
+                handle: Some(handle),
+            },
+        ))
     }
 
     pub fn stop(mut self) {
@@ -50,7 +56,9 @@ fn pick_device(hint: &str) -> Result<cpal::Device> {
         if let Ok(mut devs) = host.input_devices() {
             let h = hint.to_lowercase();
             if let Some(d) = devs.find(|d| {
-                d.name().map(|n| n.to_lowercase().contains(&h)).unwrap_or(false)
+                d.name()
+                    .map(|n| n.to_lowercase().contains(&h))
+                    .unwrap_or(false)
             }) {
                 return Ok(d);
             }
@@ -67,18 +75,19 @@ pub fn list_input_devices() -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn capture_loop(
-    hint: &str,
-    tx: mpsc::Sender<Vec<i16>>,
-    stop: Arc<AtomicBool>,
-) -> Result<()> {
+fn capture_loop(hint: &str, tx: mpsc::Sender<Vec<i16>>, stop: Arc<AtomicBool>) -> Result<()> {
     let device = pick_device(hint)?;
     let config = device
         .default_input_config()
         .context("no default input config")?;
     let in_rate = config.sample_rate().0;
     let in_ch = config.channels() as usize;
-    tracing::info!("mic '{}' {}Hz {}ch", device.name().unwrap_or_default(), in_rate, in_ch);
+    tracing::info!(
+        "mic '{}' {}Hz {}ch",
+        device.name().unwrap_or_default(),
+        in_rate,
+        in_ch
+    );
 
     // Accumulate device frames -> resample -> emit ~250 ms chunks.
     let chunk_len = (TARGET_RATE as usize) / 4;
@@ -128,7 +137,9 @@ fn capture_loop(
     }
 
     let f2i = |d: &[f32]| -> Vec<i16> {
-        d.iter().map(|&v| (v.clamp(-1.0, 1.0) * 32767.0) as i16).collect()
+        d.iter()
+            .map(|&v| (v.clamp(-1.0, 1.0) * 32767.0) as i16)
+            .collect()
     };
     let i2i = |d: &[i16]| -> Vec<i16> { d.to_vec() };
 
@@ -186,8 +197,20 @@ mod tests {
     /// devices on headless boxes) and, if one exists, open it briefly.
     #[test]
     fn mic_open_if_present() {
+        use cpal::traits::{DeviceTrait, HostTrait};
         let devs = list_input_devices();
         println!("input devices: {devs:?}");
+        let host = cpal::default_host();
+        let outs: Vec<String> = host
+            .output_devices()
+            .map(|it| it.filter_map(|d| d.name().ok()).collect())
+            .unwrap_or_default();
+        println!("output devices: {outs:?}");
+        println!(
+            "default in: {:?}, default out: {:?}",
+            host.default_input_device().and_then(|d| d.name().ok()),
+            host.default_output_device().and_then(|d| d.name().ok()),
+        );
         if devs.is_empty() {
             return;
         }
