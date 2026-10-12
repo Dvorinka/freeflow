@@ -43,8 +43,15 @@ pub struct SidecarStatus {
     pub model: Option<String>,
 }
 
-fn sidecar_exe() -> std::path::PathBuf {
-    // Bundled next to the app binary as a Tauri resource.
+fn sidecar_exe(app: &AppHandle) -> std::path::PathBuf {
+    // 1. Bundled resource dir (installed app via `tauri build`).
+    if let Ok(res) = app.path().resource_dir() {
+        let p = res.join("whisper-sidecar").join("freeflow-whisper.exe");
+        if p.exists() {
+            return p;
+        }
+    }
+    // 2. Next to the app binary.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             let p = dir.join("whisper-sidecar").join("freeflow-whisper.exe");
@@ -53,7 +60,7 @@ fn sidecar_exe() -> std::path::PathBuf {
             }
         }
     }
-    // Dev fallback: run the source script if present.
+    // 3. Dev fallback: run the frozen exe from the repo.
     std::path::PathBuf::from("sidecar").join("freeflow-whisper.exe")
 }
 
@@ -63,7 +70,7 @@ pub async fn ensure_sidecar(app: &AppHandle) -> Result<u16> {
     if let Some(port) = probe(&state).await {
         return Ok(port);
     }
-    let exe = sidecar_exe();
+    let exe = sidecar_exe(app);
     if !exe.exists() {
         return Err(anyhow!(
             "whisper sidecar not found at {}; run sidecar/build.ps1",

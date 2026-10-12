@@ -170,3 +170,30 @@ pub(crate) fn resample_linear(input: &[i16], from: f64, to: f64) -> Vec<i16> {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn resample_identity_and_down() {
+        let v = vec![1000i16, 2000, 3000, 4000];
+        assert_eq!(resample_linear(&v, 16000.0, 16000.0), v);
+        let down = resample_linear(&v, 48000.0, 16000.0);
+        assert_eq!(down.len(), 1);
+    }
+
+    /// Smoke: enumerate input devices (informational — passes with zero
+    /// devices on headless boxes) and, if one exists, open it briefly.
+    #[test]
+    fn mic_open_if_present() {
+        let devs = list_input_devices();
+        println!("input devices: {devs:?}");
+        if devs.is_empty() {
+            return;
+        }
+        let (rx, cap) = MicCapture::start("").expect("mic open");
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        cap.stop();
+        drop(rx);
+    }
+}

@@ -35,6 +35,9 @@ npm run build    # tsc + vite -> dist/
 # whisper sidecar (dev: run from source)
 cd sidecar
 .\.venv\Scripts\python.exe freeflow_whisper.py   # prints PORT <n>
+
+# freeze to a single exe (reproducible: sidecar/build.ps1)
+.\build.ps1   # -> dist/whisper-sidecar/freeflow-whisper.exe (+ dev copy)
 ```
 
 The app expects the frozen sidecar next to the app binary

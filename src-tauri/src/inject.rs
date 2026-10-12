@@ -87,3 +87,14 @@ mod imp {
 
 #[cfg(not(windows))]
 pub use imp::*;
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    /// Smoke: SendInput accepts the keystrokes (headless-safe — injection
+    /// goes to the OS input stream, no window needs focus).
+    #[test]
+    fn type_short_string() {
+        type_text("hi", 0).expect("SendInput typing");
+    }
+}
