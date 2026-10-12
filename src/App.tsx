@@ -5,15 +5,22 @@ import { Snippets } from "./views/Snippets";
 import { Meetings } from "./views/Meetings";
 import { SettingsView } from "./views/Settings";
 import { api } from "./lib/api";
-import { Button } from "./components/ui/button";
 import { cn } from "./lib/utils";
+import {
+  IconBook,
+  IconGear,
+  IconHistory,
+  IconMeet,
+  IconMic,
+  IconZap,
+} from "./components/icons";
 
 const TABS = [
-  ["history", "History"],
-  ["dictionary", "Dictionary"],
-  ["snippets", "Snippets"],
-  ["meetings", "Meetings"],
-  ["settings", "Settings"],
+  ["history", "History", IconHistory],
+  ["dictionary", "Dictionary", IconBook],
+  ["snippets", "Snippets", IconZap],
+  ["meetings", "Meetings", IconMeet],
+  ["settings", "Settings", IconGear],
 ] as const;
 
 type Tab = (typeof TABS)[number][0];
@@ -26,49 +33,85 @@ export function App() {
   const toggleDictation = () => {
     setErr("");
     if (dictating) {
-      api
-        .stopDictation()
-        .then(() => setDictating(false))
-        .catch((e) => setErr(String(e)));
+      api.stopDictation().then(
+        () => setDictating(false),
+        (e) => setErr(String(e)),
+      );
     } else {
-      api
-        .startDictation()
-        .then(() => setDictating(true))
-        .catch((e) => setErr(String(e)));
+      // A previous session (reload, crash) can leave the backend wedged
+      // in a non-idle phase: cancel once, then start for real.
+      api.startDictation().then(
+        () => setDictating(true),
+        (first) =>
+          api.cancelDictation().then(
+            () =>
+              api.startDictation().then(
+                () => setDictating(true),
+                (e) => setErr(String(e)),
+              ),
+            () => setErr(String(first)),
+          ),
+      );
     }
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">FreeFlow</h1>
-        <Button
-          variant={dictating ? "danger" : "default"}
-          onClick={toggleDictation}
-        >
-          {dictating ? "Stop dictation" : "Dictate"}
-        </Button>
-      </header>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <nav className="flex gap-1 border-b border-border pb-2">
-        {TABS.map(([id, label]) => (
+    <div className="flex h-screen overflow-hidden">
+      {/* Rail */}
+      <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
+        <div className="flex items-center gap-2 px-2 pb-4">
+          <img src="/icon.png" alt="" className="h-6 w-6 rounded-md" />
+          <span className="text-[15px] font-bold tracking-tight">FreeFlow</span>
+        </div>
+        <nav className="flex flex-col gap-0.5">
+          {TABS.map(([id, label, Icon]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium",
+                tab === id
+                  ? "bg-wash text-ink"
+                  : "text-muted hover:bg-wash/60 hover:text-ink",
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto px-2">
           <button
-            key={id}
-            onClick={() => setTab(id)}
+            onClick={toggleDictation}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm",
-              tab === id ? "bg-surface font-medium" : "text-muted hover:text-foreground",
+              "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+              dictating ? "bg-red-600 text-white hover:bg-red-700" : "bg-ink text-white hover:bg-black",
             )}
           >
-            {label}
+            <IconMic className="h-4 w-4" />
+            {dictating ? "Stop" : "Dictate"}
           </button>
-        ))}
-      </nav>
-      {tab === "history" && <History />}
-      {tab === "dictionary" && <Dictionary />}
-      {tab === "snippets" && <Snippets />}
-      {tab === "meetings" && <Meetings />}
-      {tab === "settings" && <SettingsView />}
+          <p className="mt-2 text-center text-xs text-faint">
+            {dictating ? "Speak now, then stop" : "Hold the hotkey anywhere"}
+          </p>
+        </div>
+      </aside>
+
+      {/* Content */}
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl px-6 py-6">
+          {err && (
+            <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {err}
+            </p>
+          )}
+          {tab === "history" && <History />}
+          {tab === "dictionary" && <Dictionary />}
+          {tab === "snippets" && <Snippets />}
+          {tab === "meetings" && <Meetings />}
+          {tab === "settings" && <SettingsView />}
+        </div>
+      </main>
     </div>
   );
 }

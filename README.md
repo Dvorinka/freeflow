@@ -35,6 +35,10 @@ cloud STT, no telemetry.
 > Your voice never leaves the machine.
 
 <p align="center">
+  <img src="docs/shots/overlay.png" alt="Dictation overlay pill">
+</p>
+
+<p align="center">
   <img src="docs/shots/settings.png" alt="Settings with the speech-model switcher" width="720">
 </p>
 

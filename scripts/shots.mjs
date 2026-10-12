@@ -23,8 +23,8 @@ async function main() {
   // Dictionary: replace probe residue with presentable demo words.
   await main.getByRole("button", { name: "Dictionary" }).click();
   for (const w of ["Kowalski", "Tauri", "faster-whisper"]) {
-    await main.getByPlaceholder("Add a phrase…").fill(w);
-    await main.getByRole("button", { name: "Add", exact: true }).click();
+    await main.getByPlaceholder("Add a word to dictionary…").fill(w);
+    await main.getByRole("button", { name: "Add word" }).click();
     await main.waitForTimeout(400);
   }
   await shot("dictionary");

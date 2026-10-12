@@ -1,16 +1,29 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { DictationPhase } from "../lib/api";
-import { api } from "../lib/api";
-import { Button } from "../components/ui/button";
 
-const PHASE_LABEL: Record<DictationPhase, string> = {
-  idle: "Idle",
+// Dark pill near the cursor, mirrored on the dictation lifecycle:
+// animated bars while listening, still pill with status while working.
+const PHASE_TEXT: Record<Exclude<DictationPhase, "idle">, string> = {
   listening: "Listening…",
   transcribing: "Transcribing…",
   polishing: "Polishing…",
   injecting: "Typing…",
 };
+
+function Bars({ live }: { live: boolean }) {
+  return (
+    <span className={`ff-bars flex h-4 items-center gap-[3px]${live ? "" : " paused"}`}>
+      {[10, 16, 12, 14, 8].map((h, i) => (
+        <span
+          key={i}
+          className="w-[3px] rounded-full bg-white"
+          style={{ height: h }}
+        />
+      ))}
+    </span>
+  );
+}
 
 export function Overlay() {
   const [phase, setPhase] = useState<DictationPhase>("idle");
@@ -26,19 +39,14 @@ export function Overlay() {
   if (phase === "idle") return null;
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="flex items-center gap-3 rounded-full border border-border bg-surface/90 px-5 py-2 shadow-xl">
-        <span className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+    <div className="flex h-screen items-center justify-center bg-transparent">
+      <div className="flex items-center gap-3 rounded-full bg-[#1a1a1a] py-2.5 pl-4 pr-5 text-white shadow-pill">
+        <span className="flex h-4 w-4 items-center justify-center">
+          <span className="h-2 w-2 rounded-full bg-red-500" />
         </span>
-        <span className="text-sm font-medium">{PHASE_LABEL[phase]}</span>
-        <Button
-          variant="secondary"
-          onClick={() => api.cancelDictation().catch(() => {})}
-        >
-          Cancel
-        </Button>
+        <Bars live={phase === "listening"} />
+        <span className="text-sm font-medium">{PHASE_TEXT[phase]}</span>
+        <span className="text-xs text-white/50">release to finish</span>
       </div>
     </div>
   );

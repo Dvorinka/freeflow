@@ -30,24 +30,28 @@ async function main() {
   await main.reload();
   await main.getByRole("button", { name: "Dictate" }).waitFor({ timeout: 15000 });
 
-  check("heading", (await main.textContent("h1"))?.includes("FreeFlow"));
+  check("brand in rail", ((await main.content()) ?? "").includes("FreeFlow"));
 
   // Dictate with no mic: start succeeds (capture fails async in its thread),
   // UI flips to Stop; stopping an empty buffer surfaces the honest error.
   // Proves start/stop_dictation IPC through the real UI.
   await main.getByRole("button", { name: "Dictate" }).click();
-  await main.getByRole("button", { name: "Stop dictation" }).waitFor({ timeout: 10000 });
+  await main.getByRole("button", { name: "Stop", exact: true }).waitFor({ timeout: 10000 });
   check("dictate starts (button flips)", true);
-  await main.getByRole("button", { name: "Stop dictation" }).click();
+  await main.getByRole("button", { name: "Stop", exact: true }).click();
   await main.waitForTimeout(2000);
-  const errText = (await main.locator("header + p").textContent().catch(() => "")) ?? "";
-  check("stop surfaces empty-buffer error", /recording too short/i.test(errText), errText.slice(0, 80));
+  const body1 = (await main.content()) ?? "";
+  check(
+    "stop surfaces empty-buffer error",
+    /recording too short/i.test(body1),
+    body1.slice(body1.search(/recording/i) - 20, body1.search(/recording/i) + 60),
+  );
 
   // Dictionary round-trip through real IPC + sqlite.
   await main.getByRole("button", { name: "Dictionary" }).click();
   const phrase = `CDPProbe ${Date.now() % 100000}`;
-  await main.getByPlaceholder("Add a phrase…").fill(phrase);
-  await main.getByRole("button", { name: "Add", exact: true }).click();
+  await main.getByPlaceholder("Add a word to dictionary…").fill(phrase);
+  await main.getByRole("button", { name: "Add word" }).click();
   await main.waitForTimeout(1000);
   check("dictionary add renders", ((await main.content()) ?? "").includes(phrase));
 
