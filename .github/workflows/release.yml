@@ -8,9 +8,6 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: freeflow
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -18,22 +15,19 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: freeflow/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: freeflow/sidecar/requirements.txt
       - run: npm ci
       - run: pip install -r sidecar/requirements.txt
       # Freeze the sidecar first: tauri.conf bundles dist/whisper-sidecar.
-      - run: ./sidecar/build.ps1
+      - run: ./sidecar/build.ps1 -Python python
         shell: pwsh
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: freeflow
           tagName: ${{ github.ref_name }}
           releaseName: "FreeFlow ${{ github.ref_name }}"
           releaseDraft: true
@@ -41,9 +35,6 @@ jobs:
 
   linux:
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: freeflow
     steps:
       - uses: actions/checkout@v4
       - run: >
@@ -56,15 +47,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: freeflow/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: freeflow/sidecar/requirements.txt
       - run: npm ci
       - run: pip install -r sidecar/requirements.txt pyinstaller
-      # Linux freeze: same layout the bundle expects.
+      # Linux freeze: same layout the bundle expects (extensionless binary).
       - run: >
           .venv/bin/pyinstaller --noconfirm --clean --onefile --console
           --name freeflow-whisper
@@ -72,13 +61,12 @@ jobs:
           --distpath dist/tmp freeflow_whisper.py &&
           mkdir -p dist/whisper-sidecar &&
           mv dist/tmp/freeflow-whisper dist/whisper-sidecar/freeflow-whisper
-        working-directory: freeflow/sidecar
+        working-directory: sidecar
         shell: bash
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: freeflow
           tagName: ${{ github.ref_name }}
           releaseName: "FreeFlow ${{ github.ref_name }}"
           releaseDraft: true
