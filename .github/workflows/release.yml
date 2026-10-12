@@ -8,6 +8,8 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -35,6 +37,8 @@ jobs:
 
   linux:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - run: >
@@ -53,14 +57,16 @@ jobs:
           cache: pip
       - run: npm ci
       - run: pip install -r sidecar/requirements.txt pyinstaller
-      # Linux freeze: same layout the bundle expects (extensionless binary).
+      # Linux freeze: same layout the bundle expects. The binary keeps the
+      # .exe name on all platforms so tauri.conf needs no per-OS mapping
+      # (Linux executes by magic number, not extension).
       - run: >
           python -m PyInstaller --noconfirm --clean --onefile --console
-          --name freeflow-whisper
+          --name freeflow-whisper.exe
           --collect-all faster_whisper --collect-all ctranslate2
           --distpath dist/tmp freeflow_whisper.py &&
           mkdir -p dist/whisper-sidecar &&
-          mv dist/tmp/freeflow-whisper dist/whisper-sidecar/freeflow-whisper
+          mv dist/tmp/freeflow-whisper.exe dist/whisper-sidecar/freeflow-whisper.exe
         working-directory: sidecar
         shell: bash
       - uses: tauri-apps/tauri-action@v0

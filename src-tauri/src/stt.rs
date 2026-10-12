@@ -43,19 +43,13 @@ pub struct SidecarStatus {
     pub model: Option<String>,
 }
 
-/// Candidate sidecar file names: frozen exe keeps `.exe` on Windows,
-/// extensionless everywhere else (see sidecar/build.ps1 + release.yml).
-#[cfg(windows)]
-const SIDECAR_NAMES: [&str; 1] = ["freeflow-whisper.exe"];
-#[cfg(not(windows))]
-const SIDECAR_NAMES: [&str; 1] = ["freeflow-whisper"];
+/// Frozen sidecar file name. The Linux freeze keeps the .exe suffix too so
+/// packaging needs no per-OS mapping (Linux executes by magic, not name).
+const SIDECAR_NAME: &str = "freeflow-whisper.exe";
 
 fn find_in(dir: &std::path::Path) -> Option<std::path::PathBuf> {
-    let base = dir.join("whisper-sidecar");
-    SIDECAR_NAMES
-        .iter()
-        .map(|n| base.join(n))
-        .find(|p| p.exists())
+    let p = dir.join("whisper-sidecar").join(SIDECAR_NAME);
+    p.exists().then_some(p)
 }
 
 fn sidecar_exe(app: &AppHandle) -> std::path::PathBuf {
@@ -74,7 +68,7 @@ fn sidecar_exe(app: &AppHandle) -> std::path::PathBuf {
         }
     }
     // 3. Dev fallback: frozen exe from the repo (cwd = repo root).
-    std::path::PathBuf::from("sidecar").join(SIDECAR_NAMES[0])
+    std::path::PathBuf::from("sidecar").join(SIDECAR_NAME)
 }
 
 /// Spawn the sidecar if not running; block until /health answers.
@@ -242,7 +236,7 @@ mod tests {
     /// the repo root; cargo test runs with cwd = src-tauri/).
     /// Skips gracefully when the exe is absent (CI without the freeze).
     async fn live_state() -> Option<(AppState, Child)> {
-        let exe = std::path::PathBuf::from("../sidecar").join(super::SIDECAR_NAMES[0]);
+        let exe = std::path::PathBuf::from("../sidecar").join(super::SIDECAR_NAME);
         if !exe.exists() {
             println!("no frozen sidecar — skipping live stt test");
             return None;
