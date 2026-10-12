@@ -43,18 +43,32 @@ pub struct SidecarStatus {
     pub model: Option<String>,
 }
 
-fn sidecar_exe() -> std::path::PathBuf {
-    // Bundled next to the app binary as a Tauri resource.
+/// Frozen sidecar file name. The Linux freeze keeps the .exe suffix too so
+/// packaging needs no per-OS mapping (Linux executes by magic, not name).
+const SIDECAR_NAME: &str = "freeflow-whisper.exe";
+
+fn find_in(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let p = dir.join("whisper-sidecar").join(SIDECAR_NAME);
+    p.exists().then_some(p)
+}
+
+fn sidecar_exe(app: &AppHandle) -> std::path::PathBuf {
+    // 1. Bundled resource dir (installed app via `tauri build`).
+    if let Ok(res) = app.path().resource_dir() {
+        if let Some(p) = find_in(&res) {
+            return p;
+        }
+    }
+    // 2. Next to the app binary.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            let p = dir.join("whisper-sidecar").join("freeflow-whisper.exe");
-            if p.exists() {
+            if let Some(p) = find_in(dir) {
                 return p;
             }
         }
     }
-    // Dev fallback: run the source script if present.
-    std::path::PathBuf::from("sidecar").join("freeflow-whisper.exe")
+    // 3. Dev fallback: frozen exe from the repo (cwd = repo root).
+    std::path::PathBuf::from("sidecar").join(SIDECAR_NAME)
 }
 
 /// Spawn the sidecar if not running; block until /health answers.
@@ -63,7 +77,7 @@ pub async fn ensure_sidecar(app: &AppHandle) -> Result<u16> {
     if let Some(port) = probe(&state).await {
         return Ok(port);
     }
-    let exe = sidecar_exe();
+    let exe = sidecar_exe(app);
     if !exe.exists() {
         return Err(anyhow!(
             "whisper sidecar not found at {}; run sidecar/build.ps1",
@@ -102,7 +116,7 @@ pub async fn ensure_sidecar(app: &AppHandle) -> Result<u16> {
     Err(anyhow!("sidecar did not become healthy"))
 }
 
-async fn probe(state: &tauri::State<'_, AppState>) -> Option<u16> {
+async fn probe(state: &AppState) -> Option<u16> {
     let port = *state.sidecar_port.lock();
     if port == 0 {
         return None;
@@ -118,19 +132,22 @@ async fn probe(state: &tauri::State<'_, AppState>) -> Option<u16> {
     ok.then_some(port)
 }
 
-fn port(app: &AppHandle) -> Result<u16> {
-    let p = *app.state::<AppState>().sidecar_port.lock();
+fn port(state: &AppState) -> Result<u16> {
+    let p = *state.sidecar_port.lock();
     if p == 0 {
         anyhow::bail!("whisper sidecar is not running")
     }
     Ok(p)
 }
 
-pub async fn status(app: &AppHandle) -> SidecarStatus {
-    let state = app.state::<AppState>();
+pub async fn status(state: &AppState) -> SidecarStatus {
     let p = *state.sidecar_port.lock();
     if p == 0 {
-        return SidecarStatus { running: false, port: 0, model: None };
+        return SidecarStatus {
+            running: false,
+            port: 0,
+            model: None,
+        };
     }
     let model = match state
         .http
@@ -145,22 +162,26 @@ pub async fn status(app: &AppHandle) -> SidecarStatus {
             .and_then(|v| v.get("model").and_then(|m| m.as_str().map(String::from))),
         Err(_) => None,
     };
-    SidecarStatus { running: true, port: p, model }
+    SidecarStatus {
+        running: true,
+        port: p,
+        model,
+    }
 }
 
 pub async fn transcribe(
-    app: &AppHandle,
+    state: &AppState,
     pcm: &[i16],
     language: &str,
     prompt: &str,
 ) -> Result<Transcript> {
-    let p = port(app)?;
+    let p = port(state)?;
     let mut body = Vec::with_capacity(pcm.len() * 2);
     for s in pcm {
         body.extend_from_slice(&s.to_le_bytes());
     }
-    let client = &app.state::<AppState>().http;
-    let resp = client
+    let resp = state
+        .http
         .post(format!("http://127.0.0.1:{p}/transcribe"))
         .query(&[("language", language), ("prompt", prompt)])
         .header("content-type", "application/octet-stream")
@@ -176,10 +197,9 @@ pub async fn transcribe(
     Ok(resp.json::<Transcript>().await?)
 }
 
-pub async fn list_models(app: &AppHandle) -> Result<Vec<ModelInfo>> {
-    let p = port(app)?;
-    let v = app
-        .state::<AppState>()
+pub async fn list_models(state: &AppState) -> Result<Vec<ModelInfo>> {
+    let p = port(state)?;
+    let v = state
         .http
         .get(format!("http://127.0.0.1:{p}/models"))
         .send()
@@ -189,10 +209,9 @@ pub async fn list_models(app: &AppHandle) -> Result<Vec<ModelInfo>> {
     Ok(v)
 }
 
-pub async fn select_model(app: &AppHandle, id: &str) -> Result<()> {
-    let p = port(app)?;
-    let resp = app
-        .state::<AppState>()
+pub async fn select_model(state: &AppState, id: &str) -> Result<()> {
+    let p = port(state)?;
+    let resp = state
         .http
         .post(format!("http://127.0.0.1:{p}/models/select"))
         .json(&serde_json::json!({ "id": id }))
@@ -200,7 +219,90 @@ pub async fn select_model(app: &AppHandle, id: &str) -> Result<()> {
         .send()
         .await?;
     if !resp.status().is_success() {
-        anyhow::bail!("model select failed: {}", resp.text().await.unwrap_or_default());
+        anyhow::bail!(
+            "model select failed: {}",
+            resp.text().await.unwrap_or_default()
+        );
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::AppState;
+
+    /// Spawn the frozen dev sidecar (`sidecar/freeflow-whisper[.exe]` next to
+    /// the repo root; cargo test runs with cwd = src-tauri/).
+    /// Skips gracefully when the exe is absent (CI without the freeze).
+    async fn live_state() -> Option<(AppState, Child)> {
+        let exe = std::path::PathBuf::from("../sidecar").join(super::SIDECAR_NAME);
+        if !exe.exists() {
+            println!("no frozen sidecar — skipping live stt test");
+            return None;
+        }
+        let mut child: Child = Command::new(&exe)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("spawn sidecar");
+        let port = {
+            let stdout = child.stdout.take().expect("sidecar stdout");
+            let mut reader = BufReader::new(stdout);
+            let mut line = String::new();
+            reader.read_line(&mut line).expect("handshake");
+            match line
+                .trim()
+                .strip_prefix("PORT ")
+                .and_then(|p| p.parse::<u16>().ok())
+            {
+                Some(p) => p,
+                None => {
+                    println!("bad sidecar handshake: {line:?}");
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+            }
+        };
+        let state = AppState::new();
+        *state.sidecar_port.lock() = port;
+        // Wait for /health (model still loading is fine).
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(180);
+        while std::time::Instant::now() < deadline {
+            if probe(&state).await.is_some() {
+                return Some((state, child));
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+        panic!("sidecar did not become healthy");
+    }
+
+    /// 1 s 440 Hz sine — whisper hears no speech; asserts the HTTP
+    /// round-trip + Transcript deserialization (incl. camelCase fields).
+    #[tokio::test]
+    async fn transcribe_round_trip() {
+        let Some((state, mut child)) = live_state().await else {
+            return;
+        };
+        let pcm: Vec<i16> = (0..16000)
+            .map(|i| {
+                ((i as f64 * 440.0 * 2.0 * std::f64::consts::PI / 16000.0).sin() * 8000.0) as i16
+            })
+            .collect();
+        let t = transcribe(&state, &pcm, "en", "")
+            .await
+            .expect("transcribe");
+        println!("sine transcript: {t:?}");
+        assert!(t.duration_s >= 0.0);
+
+        let models = list_models(&state).await.expect("models");
+        assert!(models.iter().any(|m| m.id == "small.en" && m.active));
+        let st = status(&state).await;
+        assert!(st.running && st.model.as_deref() == Some("small.en"));
+        let _ = child.kill();
+        let _ = child.wait();
+    }
 }

@@ -14,6 +14,20 @@ pub enum AppCategory {
     Unknown,
 }
 
+impl AppCategory {
+    /// Stable settings-map key for per-category style presets.
+    pub fn key(self) -> &'static str {
+        match self {
+            AppCategory::Code => "code",
+            AppCategory::Email => "email",
+            AppCategory::Chat => "chat",
+            AppCategory::Document => "document",
+            AppCategory::Casual => "casual",
+            AppCategory::Unknown => "unknown",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForegroundApp {
@@ -26,21 +40,20 @@ pub fn category_for(exe: &str) -> AppCategory {
     let e = exe.to_lowercase();
     let e = e.trim_end_matches(".exe");
     match e {
-        "code" | "devenv" | "rider64" | "idea64" | "pycharm64" | "goland64"
-        | "webstorm64" | "clion64" | "sublime_text" | "notepad++" | "vim"
-        | "nvim" | "emacs" | "zed" | "cursor" | "windsurf" | "devin"
-        | "windowsterminal" | "wt" | "powershell" | "pwsh" | "cmd"
-        | "gitkraken" | "fork" => AppCategory::Code,
-        "outlook" | "thunderbird" | "mailspring" | "eM Client" | "hudsmail" => {
-            AppCategory::Email
+        "code" | "devenv" | "rider64" | "idea64" | "pycharm64" | "goland64" | "webstorm64"
+        | "clion64" | "sublime_text" | "notepad++" | "vim" | "nvim" | "emacs" | "zed"
+        | "cursor" | "windsurf" | "devin" | "windowsterminal" | "wt" | "powershell" | "pwsh"
+        | "cmd" | "gitkraken" | "fork" => AppCategory::Code,
+        "outlook" | "thunderbird" | "mailspring" | "eM Client" | "hudsmail" => AppCategory::Email,
+        "slack" | "discord" | "ms-teams" | "teams" | "telegram" | "signal" | "whatsapp"
+        | "messenger" | "element" => AppCategory::Chat,
+        "winword" | "notion" | "obsidian" | "writemonkey" | "scrivener" | "libreoffice"
+        | "soffice" | "powerpnt" | "excel" | "typora" | "google docs" | "evernote" => {
+            AppCategory::Document
         }
-        "slack" | "discord" | "ms-teams" | "teams" | "telegram" | "signal"
-        | "whatsapp" | "messenger" | "element" => AppCategory::Chat,
-        "winword" | "notion" | "obsidian" | "writemonkey" | "scrivener"
-        | "libreoffice" | "soffice" | "powerpnt" | "excel" | "typora"
-        | "google docs" | "evernote" => AppCategory::Document,
-        "chrome" | "msedge" | "firefox" | "brave" | "arc" | "vivaldi"
-        | "opera" => AppCategory::Casual,
+        "chrome" | "msedge" | "firefox" | "brave" | "arc" | "vivaldi" | "opera" => {
+            AppCategory::Casual
+        }
         _ => AppCategory::Unknown,
     }
 }
@@ -93,4 +106,18 @@ pub fn foreground() -> Option<ForegroundApp> {
 #[cfg(not(windows))]
 pub fn foreground() -> Option<ForegroundApp> {
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn categories() {
+        assert_eq!(category_for("code.exe"), AppCategory::Code);
+        assert_eq!(category_for("OUTLOOK.EXE"), AppCategory::Email);
+        assert_eq!(category_for("Slack"), AppCategory::Chat);
+        assert_eq!(category_for("winword.exe"), AppCategory::Document);
+        assert_eq!(category_for("chrome.exe"), AppCategory::Casual);
+        assert_eq!(category_for("whatever.exe"), AppCategory::Unknown);
+    }
 }

@@ -1,0 +1,79 @@
+name: release
+
+# Cut a release: git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: npm ci
+      - run: pip install -r sidecar/requirements.txt
+      # Freeze the sidecar first: tauri.conf bundles dist/whisper-sidecar.
+      - run: ./sidecar/build.ps1 -Python python
+        shell: pwsh
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "FreeFlow ${{ github.ref_name }}"
+          releaseDraft: true
+          includeDebug: false
+
+  linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          sudo apt-get update &&
+          sudo apt-get install -y
+          libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          libasound2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: npm ci
+      - run: pip install -r sidecar/requirements.txt pyinstaller
+      # Linux freeze: same layout the bundle expects. The binary keeps the
+      # .exe name on all platforms so tauri.conf needs no per-OS mapping
+      # (Linux executes by magic number, not extension).
+      - run: >
+          python -m PyInstaller --noconfirm --clean --onefile --console
+          --name freeflow-whisper.exe
+          --collect-all faster_whisper --collect-all ctranslate2
+          --distpath dist/tmp freeflow_whisper.py &&
+          mkdir -p dist/whisper-sidecar &&
+          mv dist/tmp/freeflow-whisper.exe dist/whisper-sidecar/freeflow-whisper.exe
+        working-directory: sidecar
+        shell: bash
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "FreeFlow ${{ github.ref_name }}"
+          releaseDraft: true
+          includeDebug: false

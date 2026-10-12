@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  backend:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: sidecar/requirements.txt
+      - run: pip install -r ../sidecar/requirements.txt
+      # tauri-build validates bundle resources, so freeze the sidecar first.
+      # Same flags as sidecar/build.ps1; also drops the dev copy the live
+      # stt test spawns (so CI transcribes for real, incl. model download).
+      - run: |
+          pyinstaller --noconfirm --clean --onefile --console --name freeflow-whisper --collect-all faster_whisper --collect-all ctranslate2 --distpath dist/tmp freeflow_whisper.py
+          mkdir dist/whisper-sidecar
+          move dist/tmp/freeflow-whisper.exe dist/whisper-sidecar/freeflow-whisper.exe
+          copy dist/whisper-sidecar/freeflow-whisper.exe freeflow-whisper.exe
+        working-directory: sidecar
+      - uses: actions/cache@v4
+        with:
+          path: ~/AppData/Roaming/dev.tdvorak.freeflow/models
+          key: whisper-models-small-en-v1
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo build
+      - run: cargo test
+        # Live sidecar test runs (frozen above); loopback hardware test
+        # still skips without FREEFLOW_TEST_LOOPBACK=1.
+
+  frontend:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/ipc-parity.py
+
+  sidecar:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sidecar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile freeflow_whisper.py
+      - run: python -c "import numpy, faster_whisper; print('sidecar deps ok')"

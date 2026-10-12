@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -18,10 +19,12 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "playwright-core": "^1.64.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.3",

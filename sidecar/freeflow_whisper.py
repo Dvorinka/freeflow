@@ -54,9 +54,17 @@ class Engine:
         return WhisperModel
 
     def is_downloaded(self, mid: str) -> bool:
-        # faster-whisper materializes models under download_root/<model_id>
-        return os.path.isdir(os.path.join(models_dir(), f"models--{mid}")) or \
-            os.path.isdir(os.path.join(models_dir(), mid))
+        # faster-whisper caches HF-hub style: models--Systran--faster-whisper-<id>
+        root = models_dir()
+        slug = mid.replace("/", "--")
+        for name in (
+            f"models--Systran--faster-whisper-{slug}",
+            f"models--{slug}",
+            mid,
+        ):
+            if os.path.isdir(os.path.join(root, name)):
+                return True
+        return False
 
     def ensure(self, mid: str) -> None:
         with self.lock:

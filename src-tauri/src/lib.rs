@@ -52,6 +52,7 @@ pub fn run() {
             commands::dictation_state,
             commands::get_history,
             commands::delete_history_entry,
+            commands::clear_history,
             commands::replay_history_text,
             commands::dictionary_list,
             commands::dictionary_add,
@@ -72,6 +73,7 @@ pub fn run() {
             commands::list_meetings,
             commands::get_meeting,
             commands::meeting_notes,
+            commands::meeting_ask,
             commands::list_audio_devices,
             commands::ollama_status,
         ])

@@ -86,6 +86,7 @@ pub fn start(app: &AppHandle, title: String) -> Result<String> {
 
     // System-audio leg (Windows loopback). Failure is non-fatal: meeting
     // still records mic audio.
+    #[allow(unused_mut)] // `mut` only needed for the Windows loopback push
     let mut handles = vec![writer, mic_thread];
     #[cfg(windows)]
     {
@@ -99,7 +100,11 @@ pub fn start(app: &AppHandle, title: String) -> Result<String> {
         handles.push(loop_thread);
     }
 
-    let rec = MeetingRec { stop, handles, id: id.clone() };
+    let rec = MeetingRec {
+        stop,
+        handles,
+        id: id.clone(),
+    };
     *state.meeting.lock() = Some(rec);
 
     if let Some(db) = state.db.lock().as_ref() {
@@ -129,7 +134,10 @@ pub async fn stop(app: &AppHandle) -> Result<()> {
     }
 
     let state = app.state::<AppState>();
-    let wav_path = state.app_data.join("meetings").join(format!("{}.wav", rec.id));
+    let wav_path = state
+        .app_data
+        .join("meetings")
+        .join(format!("{}.wav", rec.id));
     let audio_path = wav_path.to_string_lossy().to_string();
     if let Some(db) = state.db.lock().as_ref() {
         let _ = db.meeting_finish(&rec.id, &audio_path);
@@ -155,7 +163,7 @@ async fn transcribe_meeting(app: &AppHandle, id: &str) -> Result<()> {
     let slice = (audio::TARGET_RATE as usize) * 30;
     let mut all = String::new();
     for chunk in samples.chunks(slice) {
-        let t = stt::transcribe(app, chunk, "auto", "").await?;
+        let t = stt::transcribe(&state, chunk, "auto", "").await?;
         if !all.is_empty() {
             all.push(' ');
         }
@@ -204,4 +212,26 @@ pub async fn summarize(app: &AppHandle, id: &str) -> Result<String> {
         let _ = db.meeting_set_result(id, &transcript, Some(&notes));
     }
     Ok(notes)
+}
+
+/// Answer a question about a meeting transcript with the local model.
+/// Stateless (answers are not stored) — the drawer keeps its own history.
+pub async fn ask(app: &AppHandle, id: &str, question: &str) -> Result<String> {
+    let state = app.state::<AppState>();
+    let m = {
+        let db = state.db.lock();
+        let m = db.as_ref().context("db not ready")?.meeting_get(id)?;
+        m.context("meeting not found")?
+    };
+    let transcript = m.transcript.context("meeting has no transcript yet")?;
+    let settings = state.settings.lock().clone();
+    cleanup::ollama_polish(
+        &state.http,
+        &settings.ollama_model,
+        crate::foreapp::AppCategory::Document,
+        &format!("Transcript:\n{transcript}\n\nQuestion: {question}"),
+        Some("Answer the question using only the transcript above. Be concise. If the answer is not in the transcript, say so."),
+    )
+    .await
+    .context("local LLM unavailable — run Ollama to ask about meetings")
 }

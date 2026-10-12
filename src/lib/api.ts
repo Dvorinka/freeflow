@@ -65,6 +65,9 @@ export interface Settings {
   micDevice: string;
   autostart: boolean;
   overlay: boolean;
+  autoTransform: string;
+  styles: Record<string, string>;
+  autoLearn: boolean;
 }
 
 export interface ModelInfo {
@@ -85,6 +88,7 @@ export const api = {
   cancelDictation: () => invoke<void>("cancel_dictation"),
   history: (limit = 200) => invoke<HistoryEntry[]>("get_history", { limit }),
   deleteHistory: (id: string) => invoke<void>("delete_history_entry", { id }),
+  clearHistory: () => invoke<void>("clear_history"),
   replay: (text: string) => invoke<void>("replay_history_text", { text }),
   dictionary: () => invoke<DictEntry[]>("dictionary_list"),
   dictAdd: (phrase: string) => invoke<void>("dictionary_add", { phrase }),
@@ -109,6 +113,8 @@ export const api = {
   meetings: (limit = 100) => invoke<MeetingRow[]>("list_meetings", { limit }),
   meeting: (id: string) => invoke<MeetingRow | null>("get_meeting", { id }),
   meetingNotes: (id: string) => invoke<string>("meeting_notes", { id }),
+  meetingAsk: (id: string, question: string) =>
+    invoke<string>("meeting_ask", { id, question }),
 };
 
 /** English-only vs multilingual grouping for the model switcher. */
