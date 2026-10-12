@@ -38,7 +38,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi", "deb", "appimage"],
     "icon": ["icons/icon.ico", "icons/icon.png"],
     "resources": {
       "../sidecar/dist/whisper-sidecar/freeflow-whisper.exe": "whisper-sidecar/freeflow-whisper.exe"
