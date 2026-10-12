@@ -39,7 +39,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"],
-    "resources": ["../sidecar/dist/whisper-sidecar"]
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "resources": {
+      "../sidecar/dist/whisper-sidecar/freeflow-whisper.exe": "whisper-sidecar/freeflow-whisper.exe"
+    }
   }
 }

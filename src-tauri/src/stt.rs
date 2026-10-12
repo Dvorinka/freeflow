@@ -43,25 +43,38 @@ pub struct SidecarStatus {
     pub model: Option<String>,
 }
 
+/// Candidate sidecar file names: frozen exe keeps `.exe` on Windows,
+/// extensionless everywhere else (see sidecar/build.ps1 + release.yml).
+#[cfg(windows)]
+const SIDECAR_NAMES: [&str; 1] = ["freeflow-whisper.exe"];
+#[cfg(not(windows))]
+const SIDECAR_NAMES: [&str; 1] = ["freeflow-whisper"];
+
+fn find_in(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let base = dir.join("whisper-sidecar");
+    SIDECAR_NAMES
+        .iter()
+        .map(|n| base.join(n))
+        .find(|p| p.exists())
+}
+
 fn sidecar_exe(app: &AppHandle) -> std::path::PathBuf {
     // 1. Bundled resource dir (installed app via `tauri build`).
     if let Ok(res) = app.path().resource_dir() {
-        let p = res.join("whisper-sidecar").join("freeflow-whisper.exe");
-        if p.exists() {
+        if let Some(p) = find_in(&res) {
             return p;
         }
     }
     // 2. Next to the app binary.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            let p = dir.join("whisper-sidecar").join("freeflow-whisper.exe");
-            if p.exists() {
+            if let Some(p) = find_in(dir) {
                 return p;
             }
         }
     }
-    // 3. Dev fallback: run the frozen exe from the repo.
-    std::path::PathBuf::from("sidecar").join("freeflow-whisper.exe")
+    // 3. Dev fallback: frozen exe from the repo (cwd = repo root).
+    std::path::PathBuf::from("sidecar").join(SIDECAR_NAMES[0])
 }
 
 /// Spawn the sidecar if not running; block until /health answers.
@@ -225,11 +238,11 @@ mod tests {
     use super::*;
     use crate::state::AppState;
 
-    /// Spawn the frozen dev sidecar (`sidecar/freeflow-whisper.exe` next to
+    /// Spawn the frozen dev sidecar (`sidecar/freeflow-whisper[.exe]` next to
     /// the repo root; cargo test runs with cwd = src-tauri/).
     /// Skips gracefully when the exe is absent (CI without the freeze).
     async fn live_state() -> Option<(AppState, Child)> {
-        let exe = std::path::PathBuf::from("../sidecar/freeflow-whisper.exe");
+        let exe = std::path::PathBuf::from("../sidecar").join(super::SIDECAR_NAMES[0]);
         if !exe.exists() {
             println!("no frozen sidecar — skipping live stt test");
             return None;
