@@ -7,7 +7,7 @@ on:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, x64]
     permissions:
       contents: write
     steps:
@@ -36,7 +36,7 @@ jobs:
           includeDebug: false
 
   linux:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, linux, x64]
     permissions:
       contents: write
     steps:
