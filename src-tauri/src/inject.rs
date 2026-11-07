@@ -5,8 +5,8 @@
 mod imp {
     use anyhow::Result;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
-        KEYEVENTF_UNICODE, VK_CONTROL, VK_V,
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
+        VK_CONTROL, VK_V,
     };
 
     /// Type text as unicode keystrokes into the currently focused control.
@@ -52,7 +52,11 @@ mod imp {
                 ki: KEYBDINPUT {
                     wVk: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY(vk),
                     wScan: 0,
-                    dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                    dwFlags: if up {
+                        KEYEVENTF_KEYUP
+                    } else {
+                        KEYBD_EVENT_FLAGS(0)
+                    },
                     time: 0,
                     dwExtraInfo: 0,
                 },
@@ -87,3 +91,15 @@ mod imp {
 
 #[cfg(not(windows))]
 pub use imp::*;
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    /// Smoke: SendInput accepts the keystrokes (headless-safe — injection
+    /// goes to the OS input stream, no window needs focus).
+    #[test]
+    fn type_short_string() {
+        type_text("hi", 0).expect("SendInput typing");
+        send_paste().expect("SendInput paste");
+    }
+}

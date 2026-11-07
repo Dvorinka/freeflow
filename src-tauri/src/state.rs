@@ -3,6 +3,7 @@
 use crate::{meetings, store, stt, tray};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Child;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -42,10 +43,18 @@ pub struct Settings {
     pub ollama_model: String,
     /// Preferred input device name fragment; empty = default.
     pub mic_device: String,
+    /// Learn capitalized words into the dictionary automatically.
+    pub auto_learn: bool,
     /// Launch at login.
     pub autostart: bool,
     /// Show the dictation overlay window.
     pub overlay: bool,
+    /// Named transform auto-applied after dictation (Ollama mode only).
+    /// Empty = off (rule cleanup / builtin voice).
+    pub auto_transform: String,
+    /// Per-category style preset ids ("formal" | "casual" | "very_casual"),
+    /// keyed by app-category key. Absent = builtin voice.
+    pub styles: HashMap<String, String>,
 }
 
 impl Default for Settings {
@@ -58,8 +67,11 @@ impl Default for Settings {
             polish: "rules".into(),
             ollama_model: "qwen2.5:3b".into(),
             mic_device: String::new(),
+            auto_learn: true,
             autostart: false,
             overlay: true,
+            auto_transform: String::new(),
+            styles: HashMap::new(),
         }
     }
 }
@@ -108,7 +120,10 @@ impl AppState {
         self.phase.store(p.as_u8(), Ordering::SeqCst);
         use tauri::Emitter;
         let _ = app.emit("dictation:phase", p);
-        tray::set_overlay_visible(app, p != DictationPhase::Idle && self.settings.lock().overlay);
+        tray::set_overlay_visible(
+            app,
+            p != DictationPhase::Idle && self.settings.lock().overlay,
+        );
     }
 
     /// Open the sqlite db and load settings; spawn the whisper sidecar.

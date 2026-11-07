@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { DictEntry } from "../lib/api";
 import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
+import { Banner, H } from "../components/Banner";
 
 export function Dictionary() {
   const [rows, setRows] = useState<DictEntry[]>([]);
@@ -22,39 +23,58 @@ export function Dictionary() {
   };
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Dictionary</h2>
-      <p className="text-sm text-muted">
-        Personal vocabulary — phrases here bias transcription toward your names
-        and jargon.
+    <div>
+      <h2 className="font-serif text-[28px] font-semibold tracking-tight">Dictionary</h2>
+      <p className="mt-1 text-sm text-muted">
+        Words FreeFlow always gets right. Add names and terms you use — they bias
+        transcription in your favor.
       </p>
-      <div className="flex gap-2">
+      <div className="mt-3">
+        <Banner dark
+          title={<>FreeFlow spells the way <H>you</H> do.</>}
+          body="Correct a spelling once or add it here manually, so your personal terms and uncommon names come out right."
+          action="Add new word"
+          onAction={() => document.getElementById("dict-input")?.focus()}
+        />
+      </div>
+      <div className="mt-3 flex gap-2">
         <input
-          className="flex-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
-          placeholder="Add a phrase…"
+          id="dict-input"
+          className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-faint focus:border-muted"
+          placeholder="Add a word to dictionary…"
           value={phrase}
           onChange={(e) => setPhrase(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
         />
-        <Button onClick={add}>Add</Button>
+        <Button onClick={add}>Add word</Button>
       </div>
-      {rows.map((r) => (
-        <div
-          key={r.phrase}
-          className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm"
-        >
-          <span>
-            {r.phrase}
-            <span className="ml-2 text-xs text-muted">used ×{r.frequencyUsed}</span>
-          </span>
-          <Button
-            variant="danger"
-            onClick={() => api.dictRemove(r.phrase).then(load)}
+      <div className="mt-3 divide-y divide-border rounded-card border border-border bg-surface shadow-card">
+        {rows.map((r) => (
+          <div
+            key={r.phrase}
+            className="flex items-center justify-between px-4 py-3"
           >
-            Remove
-          </Button>
-        </div>
-      ))}
+            <span className="text-[15px] font-medium">
+              {r.phrase}
+              <span className="ml-2 text-xs font-normal text-faint">
+                used ×{r.frequencyUsed}
+              </span>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => api.dictRemove(r.phrase).then(load)}
+            >
+              Remove
+            </Button>
+          </div>
+        ))}
+        {rows.length === 0 && (
+          <p className="px-4 py-3 text-sm text-muted">
+            Nothing here yet — dictated names land here automatically too.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
